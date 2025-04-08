@@ -11,7 +11,6 @@ Este é um componente Rich Text Editor estendido para [weweb.io](https://www.wew
 - Atalhos de teclado (Tab e Shift+Tab) para aplicar indentação
 - Estilização personalizada para variáveis
 - Exportação das variáveis encontradas no texto para uso em outros componentes
-- Limpeza automática de formatações indesejadas ao colar conteúdo externo (remove spans, atributos de estilo)
 
 ## Instalação
 
@@ -119,19 +118,3 @@ git add .
 git commit -m "Descrição das alterações"
 git push origin master
 ```
-
-## Limpeza ao colar conteúdo
-
-O editor inclui um sistema inteligente para tratar conteúdo colado de fontes externas (como Word, Google Docs, etc.):
-
-1. **Três modos de limpeza:**
-   - `plainText`: Remove toda formatação, mantendo apenas o texto puro
-   - `cleanHtml`: Remove elementos indesejados (span, var, font) e atributos de estilo, preservando formatações básicas (negrito, itálico, etc.)
-   - `smartClean`: Preserva elementos semânticos importantes e alinhamento de texto, removendo formatações desnecessárias
-
-2. **Preservação inteligente:**
-   - Alinhamento de texto é preservado (justificado, centralizado, etc.)
-   - Formatações semânticas (links, negrito, itálico) são mantidas onde apropriado
-   - Tags problemáticas como `<span>` são completamente removidas
-
-Esta funcionalidade evita que estilos externos indesejados contaminem o documento, mantendo a consistência visual do texto.

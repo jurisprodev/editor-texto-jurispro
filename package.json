@@ -1,6 +1,6 @@
 {
     "name": "ww-rich-text",
-    "version": "3.0.1",
+    "version": "4.0.3",
     "scripts": {
         "build": "weweb build",
         "serve": "weweb serve"
