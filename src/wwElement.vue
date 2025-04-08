@@ -465,7 +465,16 @@ export default {
             uid: props.uid,
             name: 'selectedInfo',
             type: 'object',
-            defaultValue: { ativo: false, posicao: { x: 0, y: 0 } },
+            defaultValue: { 
+                ativo: false, 
+                posicao: { x: 0, y: 0 },
+                dimensao: { largura: 0, altura: 0 },
+                texto: {
+                    comprimento: 0,
+                    linhas: 0
+                },
+                menuPosicao: 'nenhuma'
+            },
             readonly: true,
         });
 
@@ -1323,7 +1332,13 @@ export default {
             
             if (selection.empty) {
                 this.setSelected('');
-                this.setSelectedInfo({ ativo: false, posicao: { x: 0, y: 0 } });
+                this.setSelectedInfo({ 
+                    ativo: false, 
+                    posicao: { x: 0, y: 0 },
+                    dimensao: { largura: 0, altura: 0 },
+                    texto: { comprimento: 0, linhas: 0 },
+                    menuPosicao: 'nenhuma'
+                });
                 return;
             }
             
@@ -1331,15 +1346,146 @@ export default {
             const selectedText = state.doc.textBetween(selection.from, selection.to);
             this.setSelected(selectedText);
             
-            // Obter a posição da seleção
-            const coords = view.coordsAtPos(selection.from);
+            // Calcular a posição centralizada da seleção
+            const startCoords = view.coordsAtPos(selection.from);
+            const endCoords = view.coordsAtPos(selection.to);
+            
+            // Calcular dimensões e informações do texto
+            const largura = Math.abs(endCoords.right - startCoords.left);
+            const altura = Math.abs(endCoords.bottom - startCoords.top);
+            const numLinhas = startCoords.top === endCoords.top ? 1 : 
+                              Math.ceil((endCoords.bottom - startCoords.top) / 18); // Estimativa baseada em altura de linha
+            
+            // Obter as dimensões do componente para garantir que o menu esteja dentro dos limites
+            const editorElement = view.dom.closest('.ww-rich-text');
+            const editorRect = editorElement ? editorElement.getBoundingClientRect() : null;
+            
+            // Definir tamanho aproximado do menu
+            const menuWidth = 200;
+            const menuHeight = 40;
+            
+            let x = 0, y = 0, menuPosicao = 'acima';
+            
+            if (editorRect) {
+                // Usar o algoritmo para encontrar a melhor posição
+                const melhorPosicao = this.calcularMelhorPosicaoMenu(
+                    startCoords, 
+                    endCoords, 
+                    editorRect, 
+                    menuWidth, 
+                    menuHeight
+                );
+                
+                x = melhorPosicao.x;
+                y = melhorPosicao.y;
+                menuPosicao = melhorPosicao.posicao;
+            } else {
+                // Fallback caso não consiga encontrar o elemento editor
+                if (startCoords.top === endCoords.top) {
+                    // Seleção em uma única linha - centralizar horizontalmente
+                    const selectionCenterX = startCoords.left + ((endCoords.left - startCoords.left) / 2);
+                    x = Math.round(selectionCenterX - (menuWidth / 2));
+                    y = Math.round(startCoords.top - menuHeight - 5);
+                    menuPosicao = 'acima';
+                } else {
+                    // Seleção em múltiplas linhas - usar o início da primeira linha
+                    x = Math.round(startCoords.left + Math.min(150, (endCoords.right - startCoords.left)) / 2 - (menuWidth / 2));
+                    y = Math.round(startCoords.top - menuHeight - 5);
+                    menuPosicao = 'acima';
+                }
+            }
+            
             this.setSelectedInfo({
                 ativo: true,
                 posicao: {
-                    x: Math.round(coords.left),
-                    y: Math.round(coords.top)
-                }
+                    x: x,
+                    y: y
+                },
+                dimensao: {
+                    largura: Math.round(largura),
+                    altura: Math.round(altura)
+                },
+                texto: {
+                    comprimento: selectedText.length,
+                    linhas: numLinhas
+                },
+                menuPosicao: menuPosicao
             });
+        },
+        // Método para determinar a melhor posição para o menu
+        calcularMelhorPosicaoMenu(startCoords, endCoords, editorRect, menuWidth, menuHeight) {
+            // Calcular centro da seleção
+            const selectionWidth = endCoords.right - startCoords.left;
+            const selectionHeight = endCoords.bottom - startCoords.top;
+            const selectionCenterX = startCoords.left + (selectionWidth / 2);
+            const selectionCenterY = startCoords.top + (selectionHeight / 2);
+            
+            // Opção 1: Acima da seleção, centralizado horizontalmente
+            const posicaoAcima = {
+                x: selectionCenterX - (menuWidth / 2),
+                y: startCoords.top - menuHeight - 5,
+                posicao: 'acima'
+            };
+            
+            // Opção 2: Abaixo da seleção, centralizado horizontalmente
+            const posicaoAbaixo = {
+                x: selectionCenterX - (menuWidth / 2),
+                y: endCoords.bottom + 5,
+                posicao: 'abaixo'
+            };
+            
+            // Opção 3: À direita da seleção, centralizado verticalmente
+            const posicaoDireita = {
+                x: endCoords.right + 5,
+                y: selectionCenterY - (menuHeight / 2),
+                posicao: 'direita'
+            };
+            
+            // Opção 4: À esquerda da seleção, centralizado verticalmente
+            const posicaoEsquerda = {
+                x: startCoords.left - menuWidth - 5,
+                y: selectionCenterY - (menuHeight / 2),
+                posicao: 'esquerda'
+            };
+            
+            // Verificar qual posição tem melhor encaixe dentro do editor
+            const opcoes = [posicaoAcima, posicaoAbaixo, posicaoDireita, posicaoEsquerda];
+            
+            // Pontuação para cada opção (quanto maior, melhor)
+            const pontuacoes = opcoes.map(pos => {
+                let pontos = 100;
+                
+                // Penalizar se estiver fora dos limites do editor
+                if (pos.x < editorRect.left) pontos -= 20 * (editorRect.left - pos.x) / menuWidth;
+                if (pos.x + menuWidth > editorRect.right) pontos -= 20 * (pos.x + menuWidth - editorRect.right) / menuWidth;
+                if (pos.y < editorRect.top) pontos -= 20 * (editorRect.top - pos.y) / menuHeight;
+                if (pos.y + menuHeight > editorRect.bottom) pontos -= 20 * (pos.y + menuHeight - editorRect.bottom) / menuHeight;
+                
+                // Preferência por posição acima ou abaixo (mais comum em UI)
+                if (pos.posicao === 'acima' || pos.posicao === 'abaixo') pontos += 10;
+                
+                // Leve preferência por posição acima (mais comum em UI)
+                if (pos.posicao === 'acima') pontos += 5;
+                
+                return pontos;
+            });
+            
+            // Encontrar a melhor opção
+            const melhorIndex = pontuacoes.indexOf(Math.max(...pontuacoes));
+            let melhorPosicao = opcoes[melhorIndex];
+            
+            // Garantir que a posição está pelo menos parcialmente visível
+            melhorPosicao.x = Math.max(melhorPosicao.x, editorRect.left);
+            melhorPosicao.x = Math.min(melhorPosicao.x, editorRect.right - menuWidth);
+            melhorPosicao.y = Math.max(melhorPosicao.y, editorRect.top);
+            melhorPosicao.y = Math.min(melhorPosicao.y, editorRect.bottom - menuHeight);
+            
+            // Converter para valores relativos ao editor para maior precisão
+            return {
+                x: Math.round(melhorPosicao.x - editorRect.left),
+                y: Math.round(melhorPosicao.y - editorRect.top),
+                posicao: melhorPosicao.posicao
+            };
         },
     },
     mounted() {
