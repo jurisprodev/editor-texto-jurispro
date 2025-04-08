@@ -375,6 +375,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import { Variable } from './extensions/Variable';
 import { Indent } from './extensions/Indent';
+import { ClipboardTextSerializer } from './extensions/ClipboardTextSerializer';
 import IndentIcon from './icons/indent-icons.vue';
 
 import { computed, inject } from 'vue';
@@ -929,6 +930,15 @@ export default {
                         maxIndentLevel: 16,
                         indentUnit: 'px',
                         indentSize: 40,
+                    }),
+                    
+                    // Adicionar a extensão ClipboardTextSerializer para limpeza ao colar
+                    ClipboardTextSerializer.configure({
+                        // Escolha um dos modos:
+                        // 'plainText' - apenas texto puro sem formatação
+                        // 'cleanHtml' - remove spans e estilos, mas mantém estrutura HTML básica
+                        // 'smartClean' - tenta preservar formatações importantes e remover o resto
+                        mode: 'cleanHtml'
                     }),
                     
                     this.editorConfig.mention.enabled &&
