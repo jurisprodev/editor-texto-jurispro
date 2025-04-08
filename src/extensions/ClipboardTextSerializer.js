@@ -57,8 +57,18 @@ export const ClipboardTextSerializer = Extension.create({
       
       // Cria uma função recursiva dentro do escopo
       const processNode = (node, smart) => {
+        // Pular processamento de nós de texto
+        if (node.nodeType === Node.TEXT_NODE) {
+          return;
+        }
+        
         // Verificar e processar o nó atual antes de continuar
         if (node.nodeType === Node.ELEMENT_NODE) {
+          // Antes de remover estilos, verificar se o elemento tem texto mas nenhum filho elemento
+          // Isso ajuda a preservar elementos que podem conter apenas texto
+          const apenasTexto = Array.from(node.childNodes).every(child => child.nodeType === Node.TEXT_NODE);
+          const conteudoTexto = node.textContent.trim();
+          
           // Remover qualquer atributo de cor e outros estilos não permitidos
           if (node.style) {
             const textAlign = node.style.textAlign;
@@ -72,6 +82,12 @@ export const ClipboardTextSerializer = Extension.create({
           // Remover atributos de classe
           node.removeAttribute('class');
           node.removeAttribute('color');
+          
+          // Verificar se é um elemento vazio após a limpeza
+          if (apenasTexto && conteudoTexto && !node.textContent.trim()) {
+            // O conteúdo de texto foi perdido, restaurar
+            node.textContent = conteudoTexto;
+          }
         }
         
         if (node.nodeType === Node.ELEMENT_NODE && shouldBreakFormatting(node)) {
@@ -234,6 +250,10 @@ export const ClipboardTextSerializer = Extension.create({
             else if (mode === 'cleanHtml' || mode === 'smartClean') {
               // Modos de limpeza HTML - remove spans e estilos, mas mantém estrutura básica
               const html = event.clipboardData.getData('text/html')
+              const plainText = event.clipboardData.getData('text/plain')
+              
+              // Salvar o texto puro para usar como fallback se necessário
+              let textFallback = plainText.trim();
               
               if (html) {
                 event.preventDefault()
@@ -241,6 +261,9 @@ export const ClipboardTextSerializer = Extension.create({
                 // Criar um elemento temporário para manipular o HTML
                 const tempDiv = document.createElement('div')
                 tempDiv.innerHTML = html
+                
+                // Salvamos o conteúdo de texto original antes da limpeza
+                const originalText = tempDiv.textContent.trim();
                 
                 // Remover spans e atributos de estilo
                 cleanHtml(tempDiv, mode === 'smartClean')
@@ -260,14 +283,45 @@ export const ClipboardTextSerializer = Extension.create({
                   span.parentNode.replaceChild(fragment, span);
                 });
                 
-                // Converter o HTML limpo de volta para texto para inserção simples
-                // Isso é simplificado - uma implementação mais robusta usaria DOMParser
-                const cleanedHtml = tempDiv.innerHTML
+                // Verificar se o conteúdo resultante não está vazio
+                if (!tempDiv.textContent.trim()) {
+                  // Se estiver vazio após a limpeza, usar o texto puro
+                  if (textFallback) {
+                    editor.commands.insertContent(textFallback);
+                    return true;
+                  }
+                }
+                
+                // Verificar se existe conteúdo significativo
+                if (tempDiv.innerHTML === '<p></p>' || tempDiv.innerHTML === '') {
+                  // Se o conteúdo for apenas um parágrafo vazio ou nada, usar o texto puro
+                  if (textFallback) {
+                    editor.commands.insertContent(textFallback);
+                    return true;
+                  }
+                }
+                
+                // Converter o HTML limpo de volta para texto para inserção
+                const cleanedHtml = tempDiv.innerHTML;
+                
+                // Verificar se o texto foi preservado após a limpeza
+                const cleanedText = tempDiv.textContent.trim();
+                
+                // Se o texto foi perdido durante a limpeza, usar o texto original
+                if (!cleanedText && originalText) {
+                  editor.commands.insertContent(originalText);
+                  return true;
+                }
                 
                 // Inserir o HTML através do comando pasteHTML do editor
-                editor.commands.insertContent(cleanedHtml)
+                editor.commands.insertContent(cleanedHtml);
                 
                 return true
+              } else if (textFallback) {
+                // Se não houver HTML mas tiver texto puro, inserir o texto
+                event.preventDefault();
+                editor.commands.insertContent(textFallback);
+                return true;
               }
             }
             
