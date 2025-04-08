@@ -57,18 +57,8 @@ export const ClipboardTextSerializer = Extension.create({
       
       // Cria uma função recursiva dentro do escopo
       const processNode = (node, smart) => {
-        // Pular processamento de nós de texto
-        if (node.nodeType === Node.TEXT_NODE) {
-          return;
-        }
-        
         // Verificar e processar o nó atual antes de continuar
         if (node.nodeType === Node.ELEMENT_NODE) {
-          // Antes de remover estilos, verificar se o elemento tem texto mas nenhum filho elemento
-          // Isso ajuda a preservar elementos que podem conter apenas texto
-          const apenasTexto = Array.from(node.childNodes).every(child => child.nodeType === Node.TEXT_NODE);
-          const conteudoTexto = node.textContent.trim();
-          
           // Remover qualquer atributo de cor e outros estilos não permitidos
           if (node.style) {
             const textAlign = node.style.textAlign;
@@ -82,12 +72,6 @@ export const ClipboardTextSerializer = Extension.create({
           // Remover atributos de classe
           node.removeAttribute('class');
           node.removeAttribute('color');
-          
-          // Verificar se é um elemento vazio após a limpeza
-          if (apenasTexto && conteudoTexto && !node.textContent.trim()) {
-            // O conteúdo de texto foi perdido, restaurar
-            node.textContent = conteudoTexto;
-          }
         }
         
         if (node.nodeType === Node.ELEMENT_NODE && shouldBreakFormatting(node)) {
@@ -235,98 +219,83 @@ export const ClipboardTextSerializer = Extension.create({
         key: new PluginKey('clipboard-text-serializer'),
         props: {
           handlePaste: (view, event) => {
-            if (mode === 'plainText') {
-              // Modo de texto puro - remove toda formatação
-              event.preventDefault()
-              const text = event.clipboardData.getData('text/plain')
-              
-              if (text) {
-                const { tr } = view.state
-                view.dispatch(tr.insertText(text))
-              }
-              
-              return true
-            } 
-            else if (mode === 'cleanHtml' || mode === 'smartClean') {
-              // Modos de limpeza HTML - remove spans e estilos, mas mantém estrutura básica
-              const html = event.clipboardData.getData('text/html')
-              const plainText = event.clipboardData.getData('text/plain')
-              
-              // Salvar o texto puro para usar como fallback se necessário
-              let textFallback = plainText.trim();
-              
-              if (html) {
+            try {
+              if (mode === 'plainText') {
+                // Modo de texto puro - remove toda formatação
                 event.preventDefault()
+                const text = event.clipboardData.getData('text/plain')
                 
-                // Criar um elemento temporário para manipular o HTML
-                const tempDiv = document.createElement('div')
-                tempDiv.innerHTML = html
-                
-                // Salvamos o conteúdo de texto original antes da limpeza
-                const originalText = tempDiv.textContent.trim();
-                
-                // Remover spans e atributos de estilo
-                cleanHtml(tempDiv, mode === 'smartClean')
-                
-                // Verificação adicional para garantir que nenhum span permaneça
-                const spansRemanescentes = tempDiv.querySelectorAll('span, var, font');
-                spansRemanescentes.forEach(span => {
-                  // Criar um fragmento para o conteúdo do span
-                  const fragment = document.createDocumentFragment();
-                  
-                  // Mover todos os filhos para o fragmento
-                  while (span.firstChild) {
-                    fragment.appendChild(span.firstChild);
-                  }
-                  
-                  // Substituir o span pelo fragmento
-                  span.parentNode.replaceChild(fragment, span);
-                });
-                
-                // Verificar se o conteúdo resultante não está vazio
-                if (!tempDiv.textContent.trim()) {
-                  // Se estiver vazio após a limpeza, usar o texto puro
-                  if (textFallback) {
-                    editor.commands.insertContent(textFallback);
-                    return true;
-                  }
+                if (text) {
+                  const { tr } = view.state
+                  view.dispatch(tr.insertText(text))
                 }
-                
-                // Verificar se existe conteúdo significativo
-                if (tempDiv.innerHTML === '<p></p>' || tempDiv.innerHTML === '') {
-                  // Se o conteúdo for apenas um parágrafo vazio ou nada, usar o texto puro
-                  if (textFallback) {
-                    editor.commands.insertContent(textFallback);
-                    return true;
-                  }
-                }
-                
-                // Converter o HTML limpo de volta para texto para inserção
-                const cleanedHtml = tempDiv.innerHTML;
-                
-                // Verificar se o texto foi preservado após a limpeza
-                const cleanedText = tempDiv.textContent.trim();
-                
-                // Se o texto foi perdido durante a limpeza, usar o texto original
-                if (!cleanedText && originalText) {
-                  editor.commands.insertContent(originalText);
-                  return true;
-                }
-                
-                // Inserir o HTML através do comando pasteHTML do editor
-                editor.commands.insertContent(cleanedHtml);
                 
                 return true
-              } else if (textFallback) {
-                // Se não houver HTML mas tiver texto puro, inserir o texto
-                event.preventDefault();
-                editor.commands.insertContent(textFallback);
-                return true;
+              } 
+              else if (mode === 'cleanHtml' || mode === 'smartClean') {
+                // Modos de limpeza HTML - remove spans e estilos, mas mantém estrutura básica
+                const html = event.clipboardData.getData('text/html')
+                
+                if (html) {
+                  event.preventDefault()
+                  
+                  // Criar um elemento temporário para manipular o HTML
+                  const tempDiv = document.createElement('div')
+                  tempDiv.innerHTML = html
+                  
+                  // Remover spans e atributos de estilo
+                  cleanHtml(tempDiv, mode === 'smartClean')
+                  
+                  // Verificação adicional para garantir que nenhum span permaneça
+                  const spansRemanescentes = tempDiv.querySelectorAll('span, var, font');
+                  if (spansRemanescentes && spansRemanescentes.length) {
+                    Array.from(spansRemanescentes).forEach(span => {
+                      // Criar um fragmento para o conteúdo do span
+                      const fragment = document.createDocumentFragment();
+                      
+                      // Mover todos os filhos para o fragmento
+                      while (span.firstChild) {
+                        fragment.appendChild(span.firstChild);
+                      }
+                      
+                      // Substituir o span pelo fragmento
+                      if (span.parentNode) {
+                        span.parentNode.replaceChild(fragment, span);
+                      }
+                    });
+                  }
+                  
+                  // Converter o HTML limpo de volta para texto para inserção simples
+                  const cleanedHtml = tempDiv.innerHTML
+                  
+                  // Inserir o HTML através do comando pasteHTML do editor
+                  if (editor && editor.commands && editor.commands.insertContent) {
+                    editor.commands.insertContent(cleanedHtml)
+                    return true
+                  }
+                  
+                  // Fallback: se o comando insertContent não estiver disponível
+                  // Tenta usar a API do ProseMirror diretamente
+                  try {
+                    const { tr } = view.state
+                    const parser = new DOMParser()
+                    const doc = parser.parseFromString(cleanedHtml, 'text/html')
+                    view.dispatch(tr.insertText(doc.body.textContent || cleanedHtml))
+                    return true
+                  } catch (innerError) {
+                    console.error('Fallback paste failed:', innerError)
+                    // Deixar o comportamento padrão como último recurso
+                    return false
+                  }
+                }
               }
+              
+              // Deixa o editor processar normalmente se nenhuma condição acima for atendida
+              return false
+            } catch (error) {
+              console.error('Error in clipboard handler:', error)
+              return false // Permitir comportamento padrão em caso de erro
             }
-            
-            // Deixa o editor processar normalmente se nenhuma condição acima for atendida
-            return false
           },
         },
       }),
