@@ -86,6 +86,8 @@ export default {
                 'parameterQuote',
                 'parameterUndo',
                 'parameterRedo',
+                'parameterIndent',
+                'parameterOutdent',
                 'parameterVariable',
             ],
         ],
@@ -190,6 +192,8 @@ export default {
         { label: 'Toggle Blockquote', action: 'toggleBlockquote' },
         { label: 'Undo', action: 'undo' },
         { label: 'Redo', action: 'redo' },
+        { label: 'Indent', action: 'indent' },
+        { label: 'Outdent', action: 'outdent' },
         // Table
         {
             label: 'Insert Table',
@@ -1649,6 +1653,50 @@ export default {
             hidden: content => content.customMenu,
             label: {
                 en: 'Redo',
+            },
+            type: 'TextRadioGroup',
+            options: {
+                choices: [
+                    {
+                        value: true,
+                        default: true,
+                        label: 'Show',
+                    },
+                    {
+                        value: false,
+                        label: 'Hide',
+                    },
+                ],
+            },
+            defaultValue: true,
+        },
+        parameterIndent: {
+            section: 'settings',
+            hidden: content => content.customMenu,
+            label: {
+                en: 'Indent',
+            },
+            type: 'TextRadioGroup',
+            options: {
+                choices: [
+                    {
+                        value: true,
+                        default: true,
+                        label: 'Show',
+                    },
+                    {
+                        value: false,
+                        label: 'Hide',
+                    },
+                ],
+            },
+            defaultValue: true,
+        },
+        parameterOutdent: {
+            section: 'settings',
+            hidden: content => content.customMenu,
+            label: {
+                en: 'Outdent',
             },
             type: 'TextRadioGroup',
             options: {

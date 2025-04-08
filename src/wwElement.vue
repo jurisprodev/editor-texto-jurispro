@@ -105,6 +105,29 @@
                     class="separator"
                     v-if="menu.alignLeft || menu.alignCenter || menu.alignRight || menu.alignJustify"
                 ></span>
+                
+                <!-- Indent/Outdent -->
+                <button
+                    type="button"
+                    class="ww-rich-text__menu-item"
+                    @click="indent"
+                    :class="{ 'is-active': editorStates.indentLevel > 0 }"
+                    :disabled="!isEditable"
+                    v-if="menu.indent"
+                >
+                    <indent-icon icon="indent" />
+                </button>
+                <button
+                    type="button"
+                    class="ww-rich-text__menu-item"
+                    @click="outdent"
+                    :disabled="!isEditable || editorStates.indentLevel <= 0"
+                    v-if="menu.outdent"
+                >
+                    <indent-icon icon="outdent" />
+                </button>
+
+                <span class="separator" v-if="menu.indent || menu.outdent"></span>
 
                 <!-- Color -->
                 <label
@@ -351,6 +374,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import { Variable } from './extensions/Variable';
+import { Indent } from './extensions/Indent';
+import IndentIcon from './icons/indent-icons.vue';
 
 import { computed, inject } from 'vue';
 import suggestion from './suggestion.js';
@@ -382,6 +407,7 @@ export default {
     components: {
         EditorContent,
         TableIcon,
+        IndentIcon,
     },
     props: {
         content: { type: Object, required: true },
@@ -593,6 +619,9 @@ export default {
                           : false,
                 table: this.richEditor.isActive('table'),
                 variable: this.richEditor.isActive('variable'),
+                indentLevel: this.richEditor.getAttributes('paragraph').indentLevel || 
+                            this.richEditor.getAttributes('heading').indentLevel || 
+                            this.richEditor.getAttributes('listItem').indentLevel || 0,
             };
         },
         currentColor() {
@@ -641,6 +670,10 @@ export default {
                 bulletList: this.content.parameterBulletList ?? true,
                 orderedList: this.content.parameterOrderedList ?? true,
                 taskList: this.content.parameterTaskList ?? false,
+                
+                // Indentação
+                indent: this.content.parameterIndent ?? true,
+                outdent: this.content.parameterOutdent ?? true,
 
                 table: this.content.parameterTable ?? false,
 
@@ -816,6 +849,9 @@ export default {
                 '--var-borderColor': this.content.var?.borderColor || '#A5B4FC',
                 '--var-borderRadius': this.content.var?.borderRadius || '4px',
                 '--var-padding': this.content.var?.padding || '2px 6px',
+                // Indentação
+                '--indent-size': '40px',
+                '--indent-max-levels': '16',
             };
         },
         delay() {
@@ -874,6 +910,16 @@ export default {
                         HTMLAttributes: {
                             class: 'variable',
                         }
+                    }),
+                    
+                    // Adicionar a extensão Indent
+                    Indent.configure({
+                        types: ['paragraph', 'heading', 'listItem'],
+                        defaultIndentLevel: 0,
+                        minIndentLevel: 0,
+                        maxIndentLevel: 16,
+                        indentUnit: 'px',
+                        indentSize: 40,
                     }),
                     
                     this.editorConfig.mention.enabled &&
@@ -1105,6 +1151,12 @@ export default {
         },
         setTextAlign(textAlign) {
             this.richEditor.chain().focus().setTextAlign(textAlign).run();
+        },
+        indent() {
+            this.richEditor.chain().focus().indent().run();
+        },
+        outdent() {
+            this.richEditor.chain().focus().outdent().run();
         },
         setColor(color) {
             this.richEditor.chain().focus().setColor(color).run();
@@ -1414,6 +1466,18 @@ export default {
             border: var(--var-borderSize) solid var(--var-borderColor);
             border-radius: var(--var-borderRadius);
             padding: var(--var-padding);
+        }
+        
+        /* Suporte para indentação */
+        p[style*="padding-left"],
+        h1[style*="padding-left"],
+        h2[style*="padding-left"],
+        h3[style*="padding-left"],
+        h4[style*="padding-left"],
+        h5[style*="padding-left"],
+        h6[style*="padding-left"],
+        li[style*="padding-left"] {
+            position: relative;
         }
 
         /* Headings */
