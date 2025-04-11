@@ -1,6 +1,6 @@
-# Editor de Texto Jurídico com Suporte a Variáveis e Indentação
+# Editor de Texto Jurídico com Suporte a Variáveis, Indentação e Line Height
 
-Este é um componente Rich Text Editor estendido para [weweb.io](https://www.weweb.io/) que adiciona suporte para variáveis no formato `{{nome_variavel}}` e recursos avançados de indentação.
+Este é um componente Rich Text Editor estendido para [weweb.io](https://www.weweb.io/) que adiciona suporte para variáveis no formato `{{nome_variavel}}`, recursos avançados de indentação e controle de altura de linha (line height).
 
 ## Funcionalidades
 
@@ -8,6 +8,7 @@ Este é um componente Rich Text Editor estendido para [weweb.io](https://www.wew
 - Suporte para marcação e detecção automática de variáveis no formato `{{exemplo}}`
 - Normalização automática de nomes de variáveis (remoção de acentos, espaços substituídos por traços)
 - Sistema avançado de indentação de parágrafos com até 16 níveis
+- Controle de altura de linha (line height) para melhorar a legibilidade e aparência do texto
 - Atalhos de teclado (Tab e Shift+Tab) para aplicar indentação
 - Estilização personalizada para variáveis
 - Exportação das variáveis encontradas no texto para uso em outros componentes
@@ -57,6 +58,19 @@ O editor oferece duas formas de aplicar indentação:
 
 O editor suporta até 16 níveis de indentação, e cada nível adiciona um recuo de 40px.
 
+## Uso do Line Height (Altura de Linha)
+
+O editor permite ajustar a altura de linha dos elementos de texto:
+
+1. **Seletor no menu:**
+   - Selecione o texto que deseja ajustar
+   - Escolha uma das opções de altura de linha no menu suspenso (normal, 1, 1.15, 1.5, 2, 2.5, 3)
+
+2. **Programaticamente:**
+   - Use a ação `setLineHeight` com o valor desejado
+
+A altura de linha pode ser aplicada a parágrafos, títulos, citações e itens de lista.
+
 ## Exportação de variáveis
 
 O componente exporta um array de variáveis encontradas no texto, acessível através da propriedade `variables` do componente. Cada variável contém:
@@ -93,6 +107,22 @@ A indentação pode ser personalizada através das seguintes propriedades:
 - Tamanho do recuo para cada nível (padrão: 40px)
 - Número máximo de níveis de indentação (padrão: 16)
 
+### Line Height
+
+A funcionalidade de altura de linha (line height) pode ser personalizada através das seguintes propriedades:
+
+- Visibilidade do seletor de line height na barra de ferramentas
+- Valores disponíveis: normal, 1, 1.15, 1.5, 2, 2.5, 3
+
+## Estados do Editor
+
+Além do conteúdo principal, o componente mantém um objeto de estados que inclui:
+
+- Formatações ativas (negrito, itálico, etc.)
+- Alinhamento atual do texto
+- Nível de indentação
+- Altura de linha (line height) atual
+
 ## Ações disponíveis
 
 O componente disponibiliza várias ações que podem ser utilizadas em fluxos de trabalho:
@@ -100,6 +130,7 @@ O componente disponibiliza várias ações que podem ser utilizadas em fluxos de
 - Todas as ações padrão de formatação (negrito, itálico, etc.)
 - `indent`: Aumenta o nível de indentação do texto selecionado
 - `outdent`: Diminui o nível de indentação do texto selecionado
+- `setLineHeight`: Define a altura de linha do texto selecionado
 
 ## Build
 

@@ -1,6 +1,6 @@
 ---
 name: ww-input-rich-text
-description: A versatile rich text editor enabling text content creation with formatting options, headings, lists, tables, media, read-only mode, mention support, and output format selection. This is for editing rich text, not just rendering rich text.
+description: A versatile rich text editor enabling text content creation with formatting options, headings, lists, tables, media, read-only mode, mention support, line height control, and output format selection. This is for editing rich text, not just rendering rich text.
 keywords:
   - rich text editor
   - text edition
@@ -9,6 +9,7 @@ keywords:
   - multi-language support
   - markdown input
   - advanced text input
+  - line height control
 ---
 
 #### ww-input-rich-text
@@ -45,6 +46,7 @@ Properties:
 - img: object - Image styles
 - checkbox: object - Checkbox styles
 - table: object - Table styles
+- parameterLineHeight: boolean - Show/hide line height control in menu. Default: true
 
 Children:
 - customMenuElement: ww-div - Optional custom menu element
@@ -65,6 +67,7 @@ Actions:
 - `toggleItalic`: Toggle italic formatting. No args allowed
 - `toggleUnderline`: Toggle underline. No args allowed
 - `toggleStrike`: Toggle strikethrough. No args allowed
+- `toggleVariable`: Toggle variable markup. No args allowed
 - `setTextAlign`: Set text alignment. Args: Alignment (select: left, center, right, justify)
 - `setColor`: Set text color. Args: Color (color)
 - `toggleBulletList`: Toggle bullet list. No args allowed
@@ -74,6 +77,9 @@ Actions:
 - `toggleBlockquote`: Toggle blockquote. No args allowed
 - `undo`: Undo last action. No args allowed
 - `redo`: Redo last action. No args allowed
+- `indent`: Increase indentation level. No args allowed
+- `outdent`: Decrease indentation level. No args allowed
+- `setLineHeight`: Set line height. Args: Line Height (select: normal, 1, 1.15, 1.5, 2, 2.5, 3)
 - `insertTable`: Insert table. No args allowed
 - `insertRow`: Insert row. Args: Position (select: before, after)
 - `insertColumn`: Insert column. Args: Position (select: before, after)
@@ -84,9 +90,15 @@ Actions:
 Variables:
 - value: string - Current editor content
 - mentions: array - List of mentions in content
-- states: object - Editor states (text formatting, alignment, etc)
+- variables: array - List of variables in content
+- selected: string - Currently selected text
+- selectedInfo: object - Information about the current selection
+- states: object - Editor states (text formatting, alignment, indentation level, line height, etc)
 
 Special features:
 - Hide the menu for a minimalistic render
 - Use as readonly to display rich text content
 - Enable features in the menu that make sense given the building context
+- Control text line height with predefined values
+- Use variables in the format {{variable_name}}
+- Indent paragraphs and list items with up to 16 levels
