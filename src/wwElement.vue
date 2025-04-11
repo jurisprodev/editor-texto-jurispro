@@ -348,6 +348,23 @@
                 >
                     <i class="fas fa-code"></i>
                 </button>
+
+                <!-- Adicionar após a seção de indentação e antes da tabela ou link -->
+                <span class="separator" v-if="menu.lineHeight"></span>
+
+                <select v-if="menu.lineHeight" 
+                        :disabled="!isEditable" 
+                        v-model="currentLineHeight" 
+                        @change="setLineHeight(currentLineHeight)"
+                        class="ww-rich-text__menu-item line-height-select">
+                    <option value="normal">Normal</option>
+                    <option value="1">1</option>
+                    <option value="1.15">1.15</option>
+                    <option value="1.5">1.5</option>
+                    <option value="2">2</option>
+                    <option value="2.5">2.5</option>
+                    <option value="3">3</option>
+                </select>
             </div>
             <wwElement class="ww-rich-text__menu" v-else-if="content.customMenu" v-bind="content.customMenuElement" />
 
@@ -375,8 +392,10 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import { Variable } from './extensions/Variable';
 import { Indent } from './extensions/Indent';
+import { LineHeight } from './extensions/LineHeight';
 import { ClipboardTextSerializer } from './extensions/ClipboardTextSerializer';
 import IndentIcon from './icons/indent-icons.vue';
+import LineHeightIcon from './icons/line-height-icon.vue';
 
 import { computed, inject } from 'vue';
 import suggestion from './suggestion.js';
@@ -409,6 +428,7 @@ export default {
         EditorContent,
         TableIcon,
         IndentIcon,
+        LineHeightIcon,
     },
     props: {
         content: { type: Object, required: true },
@@ -630,8 +650,13 @@ export default {
                 table: this.richEditor.isActive('table'),
                 variable: this.richEditor.isActive('variable'),
                 indentLevel: this.richEditor.getAttributes('paragraph').indentLevel || 
-                            this.richEditor.getAttributes('heading').indentLevel || 
-                            this.richEditor.getAttributes('listItem').indentLevel || 0,
+                         this.richEditor.getAttributes('heading').indentLevel ||
+                         this.richEditor.getAttributes('listItem').indentLevel || 0,
+                lineHeight: this.richEditor.getAttributes('paragraph').lineHeight || 
+                           this.richEditor.getAttributes('heading').lineHeight || 
+                           this.richEditor.getAttributes('blockquote').lineHeight || 
+                           this.richEditor.getAttributes('listItem').lineHeight || 
+                           'normal',
             };
         },
         currentColor() {
@@ -694,6 +719,7 @@ export default {
                 undo: this.content.parameterUndo ?? true,
                 redo: this.content.parameterRedo ?? true,
                 variable: this.content.parameterVariable ?? false,
+                lineHeight: this.content.parameterLineHeight ?? true,
             };
         },
         editorConfig() {
@@ -867,6 +893,15 @@ export default {
         delay() {
             return wwLib.wwUtils.getLengthUnit(this.content.debounceDelay)[0];
         },
+        currentLineHeight: {
+            get() {
+                return this.editorStates.lineHeight || 'normal';
+            },
+            set(value) {
+                // Este setter é usado quando o select muda
+                this.setLineHeight(value);
+            }
+        },
     },
     methods: {
         loadEditor() {
@@ -885,6 +920,33 @@ export default {
                 },
                 onSelectionUpdate: ({ editor, transaction }) => {
                     this.handleSelection();
+                },
+                onUpdate: ({ editor, transaction }) => {
+                    // Atualiza o valor quando o conteúdo muda
+                    const content = this.getContent();
+                    this.setValue(content);
+                    
+                    // Extrair variáveis e atualizar
+                    const variables = this.extractVariables(content);
+                    this.setVariables(variables);
+                    
+                    // Disparar evento de mudança
+                    this.$emit('trigger-event', { name: 'change', event: { value: content } });
+                    
+                    // Atualizar o lineHeight nos estados
+                    const currentLineHeight = editor.getAttributes('paragraph').lineHeight || 
+                                           editor.getAttributes('heading').lineHeight || 
+                                           editor.getAttributes('blockquote').lineHeight || 
+                                           editor.getAttributes('listItem').lineHeight || 
+                                           'normal';
+                    
+                    // Forçar atualização da variável states apenas se houver mudança
+                    if (this.states?.lineHeight !== currentLineHeight) {
+                        this.setStates({
+                            ...this.states,
+                            lineHeight: currentLineHeight
+                        });
+                    }
                 },
                 extensions: [
                     StarterKit,
@@ -932,6 +994,13 @@ export default {
                         indentSize: 40,
                     }),
                     
+                    // Adicionar a extensão LineHeight
+                    LineHeight.configure({
+                        types: ['paragraph', 'heading', 'blockquote', 'listItem'],
+                        defaultLineHeight: 'normal',
+                        lineHeightOptions: ['normal', '1', '1.15', '1.5', '2', '2.5', '3']
+                    }),
+                    
                     // Adicionar a extensão ClipboardTextSerializer para limpeza ao colar
                     ClipboardTextSerializer.configure({
                         // Escolha um dos modos:
@@ -963,7 +1032,6 @@ export default {
                     // Extrair variáveis na criação do editor
                     this.setVariables(this.extractVariables(this.getContent()));
                 },
-                onUpdate: this.handleOnUpdate,
                 editorProps: {
                     handleClickOn: (view, pos, node) => {
                         if (node.type.name === 'mention') {
@@ -1296,6 +1364,25 @@ export default {
         deleteTable() {
             this.richEditor.chain().focus().deleteTable().run();
         },
+        setLineHeight(lineHeight) {
+            if (!this.richEditor) return;
+            
+            // Aplicar o line height ao editor
+            this.richEditor.chain().focus().setLineHeight(lineHeight).run();
+            
+            // Após a alteração, atualize o estado explicitamente
+            const currentLineHeight = this.richEditor.getAttributes('paragraph').lineHeight || 
+                                     this.richEditor.getAttributes('heading').lineHeight || 
+                                     this.richEditor.getAttributes('blockquote').lineHeight || 
+                                     this.richEditor.getAttributes('listItem').lineHeight || 
+                                     'normal';
+            
+            // Forçar atualização da variável states
+            this.setStates({
+                ...this.states,
+                lineHeight: currentLineHeight
+            });
+        },
         extractVariables(content) {
             const regex = /\{\{([^}]+)\}\}/g;
             const variables = [];
@@ -1349,6 +1436,22 @@ export default {
                     texto: { comprimento: 0, linhas: 0 },
                     menuPosicao: 'nenhuma'
                 });
+                
+                // Atualizar status mesmo sem seleção
+                const currentLineHeight = this.richEditor.getAttributes('paragraph').lineHeight || 
+                                      this.richEditor.getAttributes('heading').lineHeight || 
+                                      this.richEditor.getAttributes('blockquote').lineHeight || 
+                                      this.richEditor.getAttributes('listItem').lineHeight || 
+                                      'normal';
+                
+                // Forçar atualização da variável states apenas se houver mudança
+                if (this.states?.lineHeight !== currentLineHeight) {
+                    this.setStates({
+                        ...this.states,
+                        lineHeight: currentLineHeight
+                    });
+                }
+                
                 return;
             }
             
@@ -1600,6 +1703,19 @@ export default {
         }
         > * + * {
             margin-top: 0.75em;
+        }
+
+        /* Aplicar line-height aos elementos */
+        p[style*="line-height"],
+        h1[style*="line-height"],
+        h2[style*="line-height"],
+        h3[style*="line-height"],
+        h4[style*="line-height"],
+        h5[style*="line-height"],
+        h6[style*="line-height"],
+        blockquote[style*="line-height"],
+        li[style*="line-height"] {
+            /* Estilos são aplicados diretamente pelo atributo style */
         }
 
         /* Placeholder (at the top) */
@@ -1882,6 +1998,26 @@ export default {
 
     &.-readonly .ProseMirror {
         cursor: inherit;
+    }
+
+    /* Estilos para line-height */
+    p, h1, h2, h3, h4, h5, h6, blockquote, li {
+        &[style*="line-height"] {
+            display: block; /* Para garantir que o line-height seja aplicado corretamente */
+        }
+    }
+
+    .line-height-select {
+        padding: 2px 4px;
+        font-size: 12px;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--menu-color);
+        cursor: pointer;
+    }
+
+    .line-height-select:hover {
+        background-color: rgb(245, 245, 245);
     }
 }
 </style>

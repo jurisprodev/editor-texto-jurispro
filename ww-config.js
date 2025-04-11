@@ -89,6 +89,7 @@ export default {
                 'parameterIndent',
                 'parameterOutdent',
                 'parameterVariable',
+                'parameterLineHeight',
             ],
         ],
     },
@@ -194,6 +195,25 @@ export default {
         { label: 'Redo', action: 'redo' },
         { label: 'Indent', action: 'indent' },
         { label: 'Outdent', action: 'outdent' },
+        {
+            label: 'Set Line Height',
+            action: 'setLineHeight',
+            args: [
+                {
+                    name: 'Line Height',
+                    type: 'select',
+                    options: [
+                        { value: 'normal', label: { en: 'Normal' } },
+                        { value: '1', label: { en: '1' } },
+                        { value: '1.15', label: { en: '1.15' } },
+                        { value: '1.5', label: { en: '1.5' } },
+                        { value: '2', label: { en: '2' } },
+                        { value: '2.5', label: { en: '2.5' } },
+                        { value: '3', label: { en: '3' } },
+                    ],
+                },
+            ],
+        },
         // Table
         {
             label: 'Insert Table',
@@ -1719,6 +1739,28 @@ export default {
             hidden: content => content.customMenu,
             label: {
                 en: 'Variable',
+            },
+            type: 'TextRadioGroup',
+            options: {
+                choices: [
+                    {
+                        value: true,
+                        default: true,
+                        label: 'Show',
+                    },
+                    {
+                        value: false,
+                        label: 'Hide',
+                    },
+                ],
+            },
+            defaultValue: true,
+        },
+        parameterLineHeight: {
+            section: 'settings',
+            hidden: content => content.customMenu,
+            label: {
+                en: 'Line Height',
             },
             type: 'TextRadioGroup',
             options: {
